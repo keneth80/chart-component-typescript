@@ -3,6 +3,7 @@ import { Series } from './series/Series';
 import { Axis } from './axis/axis';
 import { IDisplay } from './i-display.interface';
 import { InstanceLoader } from './instance-loader';
+import { ChartException } from '../common/error/chart-exception';
 
 export class ChartBase implements IDisplay {
 
@@ -44,8 +45,14 @@ export class ChartBase implements IDisplay {
             this._clear();
             this.margin = this.configuration.chart.margin;
             this._setSize(this.configuration.chart.size.width, this.configuration.chart.size.height);
-            this._createSvgElement();
-            this._createComponent();
+            try {
+                this._createSvgElement();
+                this._createComponent();
+            } catch(e) {
+                console.log(e instanceof ChartException);
+                console.log(e.message);
+                console.log(e.name);
+            }
         }
     }
 
@@ -126,9 +133,14 @@ export class ChartBase implements IDisplay {
         this._backgroundGroup.select('.background-rect')
                              .attr('width', width - this.margin.left - this.margin.right)
                              .attr('height', height - this.margin.bottom - this.margin.top);
-        this._axisUpdate();
-        this._seriesUpdate();
-    };
+        try {
+            this._axisUpdate();
+            this._seriesUpdate();
+        } catch(e) {
+            console.log('Error Code : ', e.status);
+            console.log('Error Message : ', e.errorContent.message);
+        }
+    }
 
     _itemClick(event: any) {
         if (this._configuration.chart && this._configuration.chart.event) {
@@ -201,7 +213,7 @@ export class ChartBase implements IDisplay {
         }
         this._axis = this._createAxis(this.configuration.axis);
         this._series = this._createSeries(this.configuration.series);
-    };
+    }
 
     _setSize(width: number, height: number)  {
         this.width = width - (this.margin.left + this.margin.right);
@@ -270,7 +282,6 @@ export class ChartBase implements IDisplay {
                 series.color = this.colors[j];
                 if (type === 'group' || type === 'stacked') { // column set series
                     series.series = this._createSeries(seriesConfig.series);
-                } else {
                 }
                 // series.yAxe = _.find(this._axis, 'field', seriesConfig.yField);
                 for ( let i = 0 ; i < this._axis.length; i++ ) {
@@ -330,7 +341,8 @@ export class ChartBase implements IDisplay {
         }
     }
 
-    _addEvent() {};
+    // tslint:disable-next-line:no-empty
+    _addEvent() {}
 
     _setDefaultData() {
         for (let i = 0; i < 5; i++) {
@@ -342,4 +354,4 @@ export class ChartBase implements IDisplay {
                            profit: Math.round( Math.random() * 100  ) } );
         }
     }
-};
+}

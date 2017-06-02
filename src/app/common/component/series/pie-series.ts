@@ -1,5 +1,6 @@
 import { Series } from './../../series/Series';
 import { SeriesConfiguration } from './../../../model/chart-param.interface';
+import { ChartException } from '../../../common/error/chart-exception';
 
 export class PieSeries extends Series {
 
@@ -18,6 +19,7 @@ export class PieSeries extends Series {
         this._pie = d3.layout.pie();
         this._index = 0;
         this.seriesIndex = 0;
+
     }
 
     set seriesCnt( value: number ) {
@@ -73,26 +75,30 @@ export class PieSeries extends Series {
 
     generatePosition() {
         super.generatePosition();
-        if (!this.radius) {
-            this.radius = Math.min(this.width, this.height) / 2;
+        try {
+            if (!this.radius) {
+                this.radius = Math.min(this.width, this.height) / 2;
+            }
+            this._createArc();
+            this.target.attr('height', this.height)
+                    .attr('transform', `translate(${this.width / 2}, ${this.height / 2})`);
+        } catch(e) {
+             throw new ChartException(500, {message: 'column series generatePosition Error'});
         }
-        this._createArc();
-        this.target.attr('height', this.height)
-                   .attr('transform', `translate(${this.width / 2}, ${this.height / 2})`);
     }
 
     updateDisplay() {
         this.generatePosition();
         this._piecolor = d3.scale.category20();
         const pieTarget = this.target.selectAll('path')
-            .data(this._pie(this._pieData))
-            .enter();
+                                     .data(this._pie(this._pieData))
+                                     .enter();
         pieTarget.append('path')
-            .style('fill', (d, i) => {
-                return this._piecolor(i);
-            })
-            .attr('class', this.displayName + this._index)
-            .attr('d', this._arc);
+                 .style('fill', (d, i) => {
+                     return this._piecolor(i);
+                 })
+                 .attr('class', this.displayName + this._index)
+                 .attr('d', this._arc);
 
         if ( this.label.visible ) {
             if (this.label.side === 'in') {
@@ -108,12 +114,12 @@ export class PieSeries extends Series {
             } else {
                 const outsideLabel: any = this._createOutsideLabel();
                 const arc: any = this._createArc();
-
+                const compare = 0.97;
                 pieTarget.append('text')
                          .attr('text-anchor', 'middle')
                          .attr('transform', (d) => {
                              const pos: any = outsideLabel.centroid(d);
-                             pos[0] = this.radius * 1.7 * (this._midAngle(d) < Math.PI ? 0.97 : -0.97);
+                             pos[0] = this.radius * 1.7 * (this._midAngle(d) < Math.PI ? compare : -compare);
                              return `translate(${pos})`;
                          })
                          .text((d) => {
@@ -135,9 +141,8 @@ export class PieSeries extends Series {
         }
     }
 
-    createItem() { }
-
     _createArc() {
+
         this.innerRadius = this.radius * this.seriesIndex;
         this.outerRadius = this.innerRadius + this.radius;
         this._arc = d3.svg.arc()
@@ -162,4 +167,4 @@ export class PieSeries extends Series {
         return data.startAngle + (data.endAngle - data.startAngle) / 2;
     }
 
-};
+}
