@@ -48,6 +48,9 @@ export class InstanceLoader {
     // name: string, config: any, target: any, margin: any
     seriesFactory(name: string, seriesparams: SeriesConfiguration): any {
         const ctor: any = this._getCtor(name);
+        if (!ctor) {
+            throw new ChartException(404, {message: `not found series component ${name}`});
+        }
         let classInstance: any;
         classInstance = new ctor(seriesparams);
         return classInstance;
