@@ -50,8 +50,8 @@ export class ChartBase implements IDisplay {
                 this._createComponent();
             } catch(e) {
                 console.log(e instanceof ChartException);
-                console.log(e.message);
-                console.log(e.name);
+                console.log('Error Code : ', e.status);
+                console.log('Error Message : ', e.errorContent.message);
             }
         }
     }
@@ -136,7 +136,7 @@ export class ChartBase implements IDisplay {
         try {
             this._axisUpdate();
             this._seriesUpdate();
-        } catch(e) {
+        } catch (e) {
             console.log('Error Code : ', e.status);
             console.log('Error Message : ', e.errorContent.message);
         }
