@@ -1,6 +1,5 @@
-import { PieSet } from './component/series/pie-set';
 import { DateTimeAxis, CategoryAxis, NumericAxis } from './component/axis/index';
-import { ColumnSeries, LineSeries, ColumnSet, BarSeries, BarSet, PieSeries } from './component/series/index';
+import { ColumnSeries, LineSeries, ColumnSet, BarSeries, BarSet, PieSeries, PieSet } from './component/series/index';
 import { AxisConfiguration, SeriesConfiguration } from './../model/chart-param.interface';
 import { ChartException } from './error/chart-exception';
 
@@ -25,6 +24,7 @@ export class InstanceLoader {
             PieSet: PieSet
         };
     }
+
     _getCtor( name: string ): any {
         const ctor: any = this.ctors[name];
         if (!ctor) {

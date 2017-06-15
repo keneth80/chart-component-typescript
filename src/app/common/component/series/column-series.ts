@@ -1,5 +1,6 @@
 import { Series } from './../../series/Series';
 import { SeriesConfiguration } from './../../../model/chart-param.interface';
+import { ChartException } from '../../../common/error/chart-exception';
 
 export class ColumnSeries extends Series {
 
@@ -70,32 +71,46 @@ export class ColumnSeries extends Series {
     dataSetting() {
         super.dataSetting();
         for (let j = 0; j < this.dataProvider.length; j++) {
+            // select를 해서 없으면 바로 updateDisplay
+            // 있으면 비교 로직을 태워서 updateDisplay
             this.data = this.dataProvider[j];
-            console.log(this.data);
             this.index = j;
+            const rectElement: any = this.target.select(`.${this.displayName + this._index}`);
+            if (!rectElement[0][0]) {
+                console.log('없음 없음 ');
+            } else {
+                console.log('있음 있음');
+            }
             this.updateDisplay();
         }
     }
 
     generatePosition() {
         super.generatePosition();
-        // tslint:disable-next-line:comment-format
-        // setup x, y, width, height
-        switch (this.type) {
-            case 'stacked' :
-                this._stacked();
-            break;
-            case 'group' :
-                this._group();
-            break;
-            default :
-                this._normal();
-            break;
+        try {
+            // tslint:disable-next-line:comment-format
+            // setup x, y, width, height
+            switch (this.type) {
+                case 'stacked' :
+                    this._stacked();
+                break;
+                case 'group' :
+                    this._group();
+                break;
+                default :
+                    this._normal();
+                break;
+            }
+        } catch(e) {
+             throw new ChartException(500, {message: 'column series generatePosition Error'});
         }
     }
 
     updateDisplay() {
         super.updateDisplay();
+        this.target.attr('data-legend', () => {
+            return this.displayName;
+        });
         const rectElement: any = this.target.select(`.${this.displayName + this._index}`);
         if (!rectElement[0][0]) {
             this.createItem();
@@ -106,6 +121,8 @@ export class ColumnSeries extends Series {
                    .attr('y', this.y)
                    .attr('width', this.width)
                    .attr('height', this.height);
+
+        this.target.style('fill', this.color);
     }
 
     createItem() {
@@ -113,7 +130,7 @@ export class ColumnSeries extends Series {
                                         .append('rect')
                                         .attr('class', this.displayName + this._index)
                                         .attr('value', this._data[this._yField])
-                                        .style('fill', this.color);
+
         super.addEvent(thatElement);
     }
 
@@ -213,5 +230,5 @@ export class ColumnSeries extends Series {
             }
         }
     }
+}
 
-};

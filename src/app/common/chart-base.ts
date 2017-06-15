@@ -7,10 +7,18 @@ import { ChartException } from '../common/error/chart-exception';
 
 export class ChartBase implements IDisplay {
 
-    colors = ['#00ff00', '#00ffff', '#0000ff'];
+    static ITEM_CLICK = 'itemclick';
+    static MOUSE_OVER = 'mouseover';
+    static MOUSE_OUT = 'mouseout';
+
+    // tslint:disable-next-line:max-line-length
+    colors = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00', '#b82e2e', '#316395', '#994499', '#22aa99', '#aaaa11', '#6633cc', '#e67300', '#8b0707', '#651067', '#329262', '#5574a6', '#3b3eac'];
+
+    data: Array<any> = [];
+    min: number;
+    max: number;
 
     _configuration: any;
-
     _target: any; // target svg element
     _width: number;
     _height: number;
@@ -26,10 +34,8 @@ export class ChartBase implements IDisplay {
 
     _instance_loader: InstanceLoader;
     _isStacked = false;
-    data: Array<any> = [];
 
-    min: number;
-    max: number;
+    _event_map: any;
 
     constructor( config?: any ) {
         this._instance_loader = new InstanceLoader();
@@ -37,6 +43,7 @@ export class ChartBase implements IDisplay {
         if (config) {
             this.configuration = config;
         }
+        console.log(this.colors.length);
     }
 
     set configuration( value: any ) {
@@ -47,8 +54,9 @@ export class ChartBase implements IDisplay {
             this._setSize(this.configuration.chart.size.width, this.configuration.chart.size.height);
             try {
                 this._createSvgElement();
+                this._addEvent();
                 this._createComponent();
-            } catch(e) {
+            } catch (e) {
                 console.log(e instanceof ChartException);
                 console.log('Error Code : ', e.status);
                 console.log('Error Message : ', e.errorContent.message);
@@ -93,7 +101,7 @@ export class ChartBase implements IDisplay {
     }
 
     set axis( value: any[] ) {
-        this._axis = value;
+        this._axis = this._createAxis(value);
     }
 
     get axis(): any[] {
@@ -101,7 +109,7 @@ export class ChartBase implements IDisplay {
     }
 
     set series( value: any[] ) {
-        this._series = value;
+        this._series = this._createSeries(value);
     }
 
     get series(): any[] {
@@ -124,6 +132,13 @@ export class ChartBase implements IDisplay {
         return this._domain;
     }
 
+    addEventListener(type: string, method: any) {
+        if ( !this._event_map ) {
+            this._event_map = {};
+        }
+        this._event_map[type] = method;
+    }
+
     updateDisplay(width: number, height: number)  {
         console.log(`chart-base.updateDisplay(${width}, ${height})`);
         this._setSize(width, height);
@@ -136,40 +151,14 @@ export class ChartBase implements IDisplay {
         try {
             this._axisUpdate();
             this._seriesUpdate();
-        } catch (e) {
+        } catch(e) {
             console.log('Error Code : ', e.status);
             console.log('Error Message : ', e.errorContent.message);
         }
     }
 
-    _itemClick(event: any) {
-        if (this._configuration.chart && this._configuration.chart.event) {
-            if (this._configuration.chart.event.itemClick) {
-                this._configuration.chart.event.itemClick(event);
-            }
-        }
-    }
-
     _createSvgElement() {
-        this.target = this._createSvg(this.configuration.chart)
-                          .on('click', d => {
-                              if (d3.event.target) {
-                                  const currentEvent = {
-                                      event: d3.event,
-                                      data: d3.select(d3.event.target)[0][0].__data__
-                                  };
-                                  this._itemClick(currentEvent);
-                              }
-                          })
-                          .on('mousemove', d => {
-                              const cX = (d3.event.offsetX - this.margin.left);
-                              const cY = (d3.event.offsetY - this.margin.top);
-                              // console.log('background mousemove ==> x :', cX, ' , y : ', cY);
-                              // console.log('background click ==> event :', d3.event);
-                          })
-                          .on('remove', d => {
-                              console.log('this element removing');
-                          });
+        this.target = this._createSvg(this.configuration.chart);
         // create background element
         this._backgroundGroup = this.target.append('g')
                                     .attr('class', 'background')
@@ -194,12 +183,6 @@ export class ChartBase implements IDisplay {
                                 .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
     }
 
-    // _drawGridLine() {
-    //     if (this._target) {
-    //         const gridGroup = this.target.select(`.grid-line-group`);
-    //     }
-    // }
-
     // generate svg element using configuration
     _createComponent() {
         // stacked check
@@ -211,9 +194,9 @@ export class ChartBase implements IDisplay {
                 }
             } );
         }
-        this._axis = this._createAxis(this.configuration.axis);
-        this._series = this._createSeries(this.configuration.series);
-    }
+        this.axis = this.configuration.axis;
+        this.series = this.configuration.series;
+    };
 
     _setSize(width: number, height: number)  {
         this.width = width - (this.margin.left + this.margin.right);
@@ -221,10 +204,12 @@ export class ChartBase implements IDisplay {
     }
 
     _createSvg(chartConfig: any): any {
-        return d3.select(chartConfig.selector).append('svg');
+        return d3.select(chartConfig.selector).append('svg').attr('id', this.configuration.chart.uid);
     }
 
     _createAxis(axisList: Array<any>) {
+        console.log(axisList);
+
         const tempList = [];
         // tslint:disable-next-line:curly
         if (!axisList) return tempList;
@@ -233,7 +218,7 @@ export class ChartBase implements IDisplay {
             let axis: Axis;
             const axis_params: AxisConfiguration = {
                 conditions: axisConfig,
-                target: this._axisGroup,
+                // target: this._axisGroup,
                 width: this.width,
                 height: this.height,
                 margin: this.margin,
@@ -245,7 +230,13 @@ export class ChartBase implements IDisplay {
             // axisConfig: any, axisTarget: any, width: number, height: number, margin: Array<any>, domain: any
 
             // case 1 : configuration
-            axis = this._instance_loader.axisFactory(axisConfig.axisClass, axis_params);
+            // axis = this._instance_loader.axisFactory(axisConfig.axisClass, axis_params);
+
+            // case 2 : properties
+            axis = this._instance_loader.axisFactory(axisConfig.axisClass, null);
+            axis.configuration = axis_params;
+            axis.target = this._axisGroup;
+
             axis.updateDisplay( this.width, this.height );
 
             if (axis.numeric_max && axis.numeric_min) {
@@ -253,13 +244,9 @@ export class ChartBase implements IDisplay {
                 this.max = axis.numeric_max;
             }
 
-            // case 2 : properties
-            // axis = this._instance_loader.axisFactory(axisConfig.axisClass, null);
-            // axis.configuration = axis_params;
-            // axis.target = this._axisGroup;
-
             tempList.push(axis);
         });
+
         return tempList;
     }
 
@@ -275,10 +262,18 @@ export class ChartBase implements IDisplay {
                 const series_configuration: SeriesConfiguration = {
                     condition: seriesConfig,
                     margin: this.margin,
-                    target: this._seriesGroup,
+                    // target: this._seriesGroup,
                     type: type
                 };
-                series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, series_configuration);
+
+                // case1 : configuration
+                // series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, series_configuration);
+
+                // case2 : property
+                series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, null);
+                series.configuration = series_configuration;
+                series.target = this._seriesGroup;
+
                 series.color = this.colors[j];
                 if (type === 'group' || type === 'stacked') { // column set series
                     series.series = this._createSeries(seriesConfig.series);
@@ -299,11 +294,6 @@ export class ChartBase implements IDisplay {
                         break;
                     }
                 }
-
-                // case2 : property
-                // series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, null);
-                // series.configuration = series_configuration;
-                // series.target = this._seriesGroup;
 
                 tempList.push(series);
             });
@@ -342,12 +332,55 @@ export class ChartBase implements IDisplay {
     }
 
     // tslint:disable-next-line:no-empty
-    _addEvent() {}
+    _addEvent() {
+        this.target.on('click', d => {
+                        if (d3.event.target) {
+                            const currentEvent = {
+                                event: d3.event,
+                                data: d3.select(d3.event.target)[0][0].__data__
+                            };
+                            if (this._event_map[ChartBase.ITEM_CLICK]) {
+                                this._event_map[ChartBase.ITEM_CLICK](currentEvent);
+                            }
+                        }
+                    })
+                    .on('mouseover', d => {
+                        if (d3.event.target) {
+                            const currentEvent = {
+                                event: d3.event,
+                                data: d3.select(d3.event.target)[0][0].__data__
+                            };
+                            if (this._event_map[ChartBase.MOUSE_OVER]) {
+                                this._event_map[ChartBase.MOUSE_OVER](currentEvent);
+                            }
+                        }
+                    })
+                    .on('mouseout', d => {
+                        if (d3.event.target) {
+                            const currentEvent = {
+                                event: d3.event,
+                                data: d3.select(d3.event.target)[0][0].__data__
+                            };
+                            if (this._event_map[ChartBase.MOUSE_OUT]) {
+                                this._event_map[ChartBase.MOUSE_OUT](currentEvent);
+                            }
+                        }
+                    })
+                    .on('mousemove', d => {
+                        const cX = (d3.event.offsetX - this.margin.left);
+                        const cY = (d3.event.offsetY - this.margin.top);
+                        // console.log('background mousemove ==> x :', cX, ' , y : ', cY);
+                        // console.log('background click ==> event :', d3.event);
+                    })
+                    .on('remove', d => {
+                        console.log('this element removing');
+                    });
+    }
 
     _setDefaultData() {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 31; i++) {
             this.data.push( {  category: 'A' + i,
-                          //  date: new Date(2017, 0, i).getTime(),
+                           date: new Date(2017, 0, i).getTime(),
                            rate: Math.round( Math.random() * 10 ),
                            ratio: Math.round( Math.random() * 110  ),
                            revenue: Math.round( Math.random() * 120  ),
