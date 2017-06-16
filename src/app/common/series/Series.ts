@@ -47,6 +47,10 @@ export abstract class Series implements IDisplay {
         }
     }
 
+    get configuration() {
+        return this._configuration;
+    }
+
     set width(value: number) {
         this._width = value;
     }
@@ -171,15 +175,13 @@ export abstract class Series implements IDisplay {
         return this._dataProvider;
     }
 
+    /*
+    * title : dataSetting
+    * description : Run when set dataProvider
+    */
     protected dataSetting() { }
 
     protected createChildren() { }
-
-    updateDisplay(width?: number, height?: number) {
-        if (this.data) {
-            this.generatePosition();
-        }
-    }
 
     protected generatePosition() { }
 
@@ -193,21 +195,12 @@ export abstract class Series implements IDisplay {
     * title : addEvent
     * description : add eventlistener of created svg element
     */
-    addEvent(element: any) {
-        element
-        .on('click', d => {
-            const cX = (d3.event.offsetX);
-            const cY = (d3.event.offsetY);
-            console.log('element click ==> :', d3.event);
-        })
-        .on('mousemove', d => {
-            const cX = (d3.event.offsetX);
-            const cY = (d3.event.offsetY);
-            // console.log('element click ==> x :', cX, ' , y : ', cY);
-        });
-    }
+    addEvent(element: any) { }
+
+    unselectAll() {}
 
     /*
+
     * title : _createContainer
     * description : first time, create group element in series class
     */
@@ -228,6 +221,12 @@ export abstract class Series implements IDisplay {
 
         if (conditions.label) {
           this.label = conditions.label;
+        }
+    }
+
+    updateDisplay(width?: number, height?: number) {
+        if (this.data) {
+            this.generatePosition();
         }
     }
 

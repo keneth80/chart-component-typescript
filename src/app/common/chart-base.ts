@@ -11,8 +11,8 @@ export class ChartBase implements IDisplay {
     static MOUSE_OVER = 'mouseover';
     static MOUSE_OUT = 'mouseout';
 
-    // tslint:disable-next-line:max-line-length
-    colors = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00', '#b82e2e', '#316395', '#994499', '#22aa99', '#aaaa11', '#6633cc', '#e67300', '#8b0707', '#651067', '#329262', '#5574a6', '#3b3eac'];
+    colors = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00',
+        '#b82e2e', '#316395', '#994499', '#22aa99', '#aaaa11', '#6633cc', '#e67300', '#8b0707', '#651067', '#329262', '#5574a6', '#3b3eac'];
 
     data: Array<any> = [];
     min: number;
@@ -39,7 +39,6 @@ export class ChartBase implements IDisplay {
 
     constructor( config?: any ) {
         this._instance_loader = new InstanceLoader();
-        this._setDefaultData();
         if (config) {
             this.configuration = config;
         }
@@ -49,6 +48,11 @@ export class ChartBase implements IDisplay {
     set configuration( value: any ) {
         this._configuration = value;
         if (this._configuration) {
+            if (!this._configuration.chart.data) {
+                this._setDefaultData();
+            } else {
+                this.data = this._configuration.chart.data;
+            }
             this._clear();
             this.margin = this.configuration.chart.margin;
             this._setSize(this.configuration.chart.size.width, this.configuration.chart.size.height);
@@ -94,6 +98,7 @@ export class ChartBase implements IDisplay {
 
     set dataProvider( data: any[] ) {
         this._dataProvider = data;
+        this.updateDisplay();
     }
 
     get dataProvider() {
@@ -139,19 +144,21 @@ export class ChartBase implements IDisplay {
         this._event_map[type] = method;
     }
 
-    updateDisplay(width: number, height: number)  {
+    updateDisplay(width?: number, height?: number)  {
         console.log(`chart-base.updateDisplay(${width}, ${height})`);
-        this._setSize(width, height);
-        this.target
-            .attr('width', width)
-            .attr('height', height);
-        this._backgroundGroup.select('.background-rect')
-                             .attr('width', width - this.margin.left - this.margin.right)
-                             .attr('height', height - this.margin.bottom - this.margin.top);
+        if ( width && height ) {
+            this._setSize(width, height);
+            this.target
+                .attr('width', width)
+                .attr('height', height);
+            this._backgroundGroup.select('.background-rect')
+                                .attr('width', width - this.margin.left - this.margin.right)
+                                .attr('height', height - this.margin.bottom - this.margin.top);
+        }
         try {
             this._axisUpdate();
             this._seriesUpdate();
-        } catch(e) {
+        } catch (e) {
             console.log('Error Code : ', e.status);
             console.log('Error Message : ', e.errorContent.message);
         }
@@ -331,54 +338,67 @@ export class ChartBase implements IDisplay {
         }
     }
 
-    // tslint:disable-next-line:no-empty
     _addEvent() {
         this.target.on('click', d => {
-                        if (d3.event.target) {
-                            const currentEvent = {
-                                event: d3.event,
-                                data: d3.select(d3.event.target)[0][0].__data__
-                            };
-                            if (this._event_map[ChartBase.ITEM_CLICK]) {
-                                this._event_map[ChartBase.ITEM_CLICK](currentEvent);
-                            }
+            if (d3.event.target) {
+                const currentEvent = {
+                    event: d3.event,
+                    data: d3.select(d3.event.target)[0][0].__data__
+                };
+                if (currentEvent.data === undefined) {
+                    this.series.map((s) => {
+                        if (s.series !== undefined) {
+                            s.series.map((sr: any) => {
+                                sr.unselectAll();
+                            });
+                        } else {
+                            s.unselectAll();
                         }
-                    })
-                    .on('mouseover', d => {
-                        if (d3.event.target) {
-                            const currentEvent = {
-                                event: d3.event,
-                                data: d3.select(d3.event.target)[0][0].__data__
-                            };
-                            if (this._event_map[ChartBase.MOUSE_OVER]) {
-                                this._event_map[ChartBase.MOUSE_OVER](currentEvent);
-                            }
-                        }
-                    })
-                    .on('mouseout', d => {
-                        if (d3.event.target) {
-                            const currentEvent = {
-                                event: d3.event,
-                                data: d3.select(d3.event.target)[0][0].__data__
-                            };
-                            if (this._event_map[ChartBase.MOUSE_OUT]) {
-                                this._event_map[ChartBase.MOUSE_OUT](currentEvent);
-                            }
-                        }
-                    })
-                    .on('mousemove', d => {
-                        const cX = (d3.event.offsetX - this.margin.left);
-                        const cY = (d3.event.offsetY - this.margin.top);
-                        // console.log('background mousemove ==> x :', cX, ' , y : ', cY);
-                        // console.log('background click ==> event :', d3.event);
-                    })
-                    .on('remove', d => {
-                        console.log('this element removing');
                     });
-    }
+                }
+                if (this._event_map[ChartBase.ITEM_CLICK]) {
+                    this._event_map[ChartBase.ITEM_CLICK](currentEvent);
+                }
+            }
+        })
+        .on('mouseover', d => {
+            if (d3.event.target) {
+                const currentEvent = {
+                    event: d3.event,
+                    data: d3.select(d3.event.target)[0][0].__data__
+                };
+                if (this._event_map[ChartBase.MOUSE_OVER]) {
+                    this._event_map[ChartBase.MOUSE_OVER](currentEvent);
+                }
+            }
+        })
+        .on('mouseout', d => {
+            if (d3.event.target) {
+                const currentEvent = {
+                    event: d3.event,
+                    data: d3.select(d3.event.target)[0][0].__data__
+                };
+                if (this._event_map[ChartBase.MOUSE_OUT]) {
+                    this._event_map[ChartBase.MOUSE_OUT](currentEvent);
+                }
+            }
+        })
+        .on('mousemove', d => {
+            const cX = (d3.event.offsetX - this.margin.left);
+            const cY = (d3.event.offsetY - this.margin.top);
+            // console.log('background mousemove ==> x :', cX, ' , y : ', cY);
+            // console.log('background click ==> event :', d3.event);
+        })
+        .on('remove', d => {
+            console.log('this element removing');
+            // this._itemClick(currentEvent);
+
+        });
+
+    };
 
     _setDefaultData() {
-        for (let i = 0; i < 31; i++) {
+        for (let i = 0; i < 20; i++) {
             this.data.push( {  category: 'A' + i,
                            date: new Date(2017, 0, i).getTime(),
                            rate: Math.round( Math.random() * 10 ),
