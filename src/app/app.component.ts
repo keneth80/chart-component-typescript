@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { LegendConfiguration } from './model/legend.interface';
+import { AppService } from './app.service';
+import { Observable } from 'rxjs/observable';
+import { Subject } from 'rxjs/';
+
 
 @Component({
   selector: 'app-root',
@@ -8,17 +12,49 @@ import { LegendConfiguration } from './model/legend.interface';
 })
 export class AppComponent implements OnInit {
     title = 'app works!';
+    currentType: string;
     chartinfo: any;
     axis: any;
     series: any;
     legendinfo: LegendConfiguration;
     data: Array<any>;
+    chartTypeClick$: Subject<string> = new Subject();
+    currentConfiguration: any;
+    currentConfigurationString: string;
+    responseStream: Observable<any>;
 
-    consturctor() {
+    constructor(
+        private appS: AppService
+    ) {
+        this.responseStream = this.chartTypeClick$.flatMap((type: string) => {
+            this.currentType = type;
+            return this.appS.getChartConfiguration(type);
+        });
+
+        this.responseStream.subscribe(
+            (res) => {
+
+                this._setDefaultData();
+                // const re = /(:{)/g;
+                // const comma = /(,)/g;
+                // this.currentConfigurationString = JSON.stringify(res).replace(re, ':\n\t{' ).replace(comma, ',\n');
+                this._chartDrawSetting(res);
+            },
+            (err) => {
+                console.log('Error : ', err);
+            },
+            () => {
+                console.log('complete');
+            }
+        );
+
     }
 
     ngOnInit() {
-        this._setDefaultData();
+        this.currentType = 'column';
+
+        // default chart configuration setting
+
         this.chartinfo = {
             selector: '#div_01',
             uid: 'chart01_uid',
@@ -92,177 +128,23 @@ export class AppComponent implements OnInit {
             }
         ];
         this.series = [
-            // {
-            //     seriesClass: 'PieSet',
-            //     visible: true,
-            //     type: 'group', // stacked
-            //     series: [
-            //         {
-            //             seriesClass: 'PieSeries',
-            //             xField: 'profit',
-            //             yField: 'profit',
-            //             visible: true,
-            //             displayName: 'Profit',
-            //             label: true
-            //         },
-            //         {
-            //             seriesClass: 'PieSeries',
-            //             xField: 'revenue',
-            //             yField: 'revenue',
-            //             visible: true,
-            //             displayName: 'Revenue',
-            //             label: true
-            //         }
-            //     ]
-            // },
-            // {
-            //     seriesClass: 'PieSeries',
-            //     xField: 'profit',
-            //     yField: 'profit',
-            //     visible: true,
-            //     displayName: 'Profit',
-            //     displayKey: 'category',
-            //     label: {
-            //       visible: true,
-            //       side: 'out'
-            //     }
-            // }
-
-            // {
-            //     seriesClass: 'ColumnSeries',
-            //     xField: 'category',
-            //     yField: 'profit',
-            //     visible: true,
-            //     displayName: 'Profit'
-            // },
-            // {
-            //     seriesClass: 'LineSeries',
-            //     xField: 'category',
-            //     yField: 'profit',
-            //     visible: true,
-            //     displayName: 'Profit'
-            // }
-
-            // {
-            //     seriesClass: 'ColumnSet',
-            //     visible: true,
-            //     type: 'group', // stacked
-            //     series: [
-            //         {
-            //             seriesClass: 'ColumnSeries',
-            //             xField: 'category',
-            //             yField: 'profit',
-            //             visible: true,
-            //             displayName: 'Profit'
-            //         },
-            //         {
-            //             seriesClass: 'ColumnSeries',
-            //             xField: 'category',
-            //             yField: 'revenue',
-            //             visible: true,
-            //             displayName: 'Revenue'
-            //         },
-            //         {
-            //             seriesClass: 'ColumnSeries',
-            //             xField: 'category',
-            //             yField: 'ratio',
-            //             visible: true,
-            //             displayName: 'Ratio'
-            //         }
-            //     ]
-            // },
-            // {
-            //     seriesClass: 'LineSeries',
-            //     xField: 'category',
-            //     yField: 'rate',
-            //     visible: true,
-            //     displayName: 'Rate'
-            // }
-            // {
-            //     seriesClass: 'BarSeries',
-            //     xField: 'revenue',
-            //     yField: 'category',
-            //     visible: true,
-            //     displayName: 'Category'
-            // }
-
             {
-                seriesClass: 'ColumnSet',
+                seriesClass: 'ColumnSeries',
+                xField: 'category',
+                yField: 'profit',
                 visible: true,
-                type: 'group', // stacked
-                series: [
-                    {
-                        seriesClass: 'ColumnSeries',
-                        xField: 'category',
-                        yField: 'profit',
-                        visible: true,
-                        displayName: 'Profit'
-                    },
-                    {
-                        seriesClass: 'ColumnSeries',
-                        xField: 'category',
-                        yField: 'revenue',
-                        visible: true,
-                        displayName: 'Revenue'
-                    },
-                    {
-                        seriesClass: 'ColumnSeries',
-                        xField: 'category',
-                        yField: 'ratio',
-                        visible: true,
-                        displayName: 'Ratio'
-                    }
-                ]
+                displayName: 'Profit'
             },
-            // {
-            //     seriesClass: 'LineSeries',
-            //     xField: 'category',
-            //     yField: 'rate',
-            //     visible: true,
-            //     displayName: 'Rate'
-            // }
-            // {
-            //     seriesClass: 'BarSeries',
-            //     xField: 'revenue',
-            //     yField: 'category',
-            //     visible: true,
-            //     displayName: 'Category'
-            // }
-            // {
-            //     seriesClass: 'BarSet',
-            //     visible: true,
-            //     type: 'group', // stacked
-            //     series: [
-            //         {
-            //             seriesClass: 'BarSeries',
-            //             xField: 'profit',
-            //             yField: 'category',
-            //             visible: true,
-            //             displayName: 'Profit'
-            //         },
-            //         {
-            //             seriesClass: 'BarSeries',
-            //             xField: 'revenue',
-            //             yField: 'category',
-            //             visible: true,
-            //             displayName: 'Revenue'
-            //         },
-            //         {
-            //             seriesClass: 'BarSeries',
-            //             xField: 'ratio',
-            //             yField: 'category',
-            //             visible: true,
-            //             displayName: 'Ratio'
-            //         }
-            //     ]
-            // }
-
         ];
         this.legendinfo = {
             selector: '#div_02',
             orient: 'bottom',
             series: this.series
         };
+    }
+
+    rerun() {
+        this._chartDrawSetting(JSON.parse(this.currentConfigurationString));
     }
 
     _setDefaultData() {
@@ -275,5 +157,20 @@ export class AppComponent implements OnInit {
                            revenue: Math.round( Math.random() * 120  ),
                            profit: Math.round( Math.random() * 100  ) } );
         }
+    }
+
+    _chartDrawSetting(data: any) {
+
+        this.currentConfiguration = data;
+        this.currentConfigurationString = JSON.stringify(data, undefined, 4);
+        this.chartinfo = this.currentConfiguration.chart;
+        this.series = this.currentConfiguration.series;
+        this.axis = this.currentConfiguration.axis;
+
+        this.legendinfo = {
+            selector: '#div_02',
+            orient: 'bottom',
+            series: this.series
+        };
     }
 }

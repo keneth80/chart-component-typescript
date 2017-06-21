@@ -1,9 +1,11 @@
 import { ChartBase } from './../../common/chart-base';
-import { Component, HostListener, Input, Output, OnInit, EventEmitter, ViewEncapsulation } from '@angular/core';
+import { Component, HostListener, Input, Output, OnInit, EventEmitter, ViewEncapsulation, OnChanges } from '@angular/core';
+import { ChartEvent } from '../../common/event/chart-event';
+
 
 @Component({
-    selector: 'app-chart',
-    templateUrl: 'chart.component.html',
+    selector: 'mi-chart',
+    templateUrl: 'mi-chart.component.html',
     styles: [`
         #div_01 {
             border: 1px solid black;
@@ -25,7 +27,7 @@ import { Component, HostListener, Input, Output, OnInit, EventEmitter, ViewEncap
     encapsulation: ViewEncapsulation.None
 })
 
-export class ChartComponent implements OnInit {
+export class ChartComponent implements OnInit, OnChanges {
     @Input() chartinfo: any;
     @Input() series: any;
     @Input() axis: any;
@@ -45,55 +47,59 @@ export class ChartComponent implements OnInit {
     constructor() { }
 
     ngOnInit() {
-        this._setChartJson();
+        this._setChartJson(this.chartinfo, this.axis, this.series);
+        this._drawChart();
+        dispatchEvent(new Event('resize'));
+    }
+
+    ngOnChanges(value) {
+        if (this.baseChart) {
+            this.baseChart._clear();
+            this.chartinfo = value.chartinfo.currentValue;
+            this.axis = value.axis.currentValue;
+            this.series = value.series.currentValue;
+            this._setChartJson(this.chartinfo, this.axis, this.series);
+            this._drawChart();
+            dispatchEvent(new Event('resize'));
+        }
+    }
+
+    _drawChart() {
         this.baseChart = new ChartBase(this.chartConfig);
-        this.baseChart.addEventListener(ChartBase.ITEM_CLICK, this._itemClick);
-        this.baseChart.addEventListener(ChartBase.MOUSE_OUT, this._mouseOut);
-        this.baseChart.addEventListener(ChartBase.MOUSE_OVER, this._mouseOver);
+        this.baseChart.addEventListener(ChartEvent.ITEM_CLICK, this._itemClick);
+        this.baseChart.addEventListener(ChartEvent.MOUSE_OUT, this._mouseOut);
+        this.baseChart.addEventListener(ChartEvent.MOUSE_OVER, this._mouseOver);
         this.baseChart.updateDisplay(this.chartConfig.chart.size.width, this.chartConfig.chart.size.height);
-        window.dispatchEvent(new Event('resize'));
     }
 
     @HostListener('window:resize', ['$event'])
     onResize(event) {
-        const elem = window.document.getElementById('div_01');
+        // const elem = window.document.getElementById('div_01');
+        const elem = event.target.document.getElementById('div_01');
         this.baseChart.updateDisplay(elem.offsetWidth, elem.offsetHeight);
     }
 
-    _setChartJson() {
+    _setChartJson(chartinfo: any, axis: any, series: any) {
         this.chartConfig = {};
-        this.chartConfig.chart = this.chartinfo;
-        this.chartConfig.axis = this.axis;
-        this.chartConfig.series = this.series;
+        this.chartConfig.chart = chartinfo;
+        this.chartConfig.axis = axis;
+        this.chartConfig.series = series;
     }
 
     _itemClick(event: any) {
-        console.log('itemClick : ', event);
-
-
-        const targetEl = d3.select(event.event.target);
-        if (event.data !== undefined) {
-            if (typeof(event.data) === 'object') {
-
-
-
-            } else {
-                console.log('axis');
-            }
+        if (this.itemclick.emit) {
+            this.itemclick.emit(event);
         }
-
-        this.itemclick.emit(event);
     }
 
     _mouseOver(event: any) {
-        console.log('_mouseOver : ', event);
         if (this.mouseover.emit) {
             this.mouseover.emit(event);
         }
     }
 
     _mouseOut(event: any) {
-        console.log('_mouseOut : ', event);
+
         if (this.mouseout.emit) {
             this.mouseout.emit(event);
         }
