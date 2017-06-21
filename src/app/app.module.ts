@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { HttpModule } from '@angular/http';
 
 import { AppComponent } from './app.component';
-import { ChartComponent } from './component/chart/chart.component';
-import {LegendComponent} from "./component/legend/legend.component";
+import { ChartComponent } from './component/chart/mi-chart.component';
+import { LegendComponent } from './component/legend/mi-legend.component';
+import { AppService } from './app.service';
 
 @NgModule({
   declarations: [
@@ -18,7 +19,7 @@ import {LegendComponent} from "./component/legend/legend.component";
     FormsModule,
     HttpModule
   ],
-  providers: [],
-  bootstrap: [AppComponent]
+  providers: [ AppService ],
+  bootstrap: [ AppComponent ]
 })
 export class AppModule { }

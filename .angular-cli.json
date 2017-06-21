@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "project": {
-    "name": "typescript-chart"
+    "version": "1.0.0-beta.32.3",
+    "name": "chart-component"
   },
   "apps": [
     {
@@ -15,15 +16,14 @@
       "main": "main.ts",
       "polyfills": "polyfills.ts",
       "test": "test.ts",
-      "tsconfig": "tsconfig.app.json",
-      "testTsconfig": "tsconfig.spec.json",
+      "tsconfig": "tsconfig.json",
       "prefix": "app",
       "styles": [
         "styles.css"
       ],
       "scripts": [
-          "../src/lib/d3/d3.min.js",
-          "../node_modules/lodash/lodash.min.js"
+        "../src/lib/d3/d3.min.js",
+        "../node_modules/lodash/lodash.min.js"
       ],
       "environmentSource": "environments/environment.ts",
       "environments": {
@@ -39,13 +39,12 @@
   },
   "lint": [
     {
-      "project": "src/tsconfig.app.json"
+      "files": "src/**/*.ts",
+      "project": "src/tsconfig.json"
     },
     {
-      "project": "src/tsconfig.spec.json"
-    },
-    {
-      "project": "e2e/tsconfig.e2e.json"
+      "files": "e2e/**/*.ts",
+      "project": "e2e/tsconfig.json"
     }
   ],
   "test": {

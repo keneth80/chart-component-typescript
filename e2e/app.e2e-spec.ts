@@ -1,10 +1,10 @@
-import { TypescriptChartPage } from './app.po';
+import { ChartComponentPage } from './app.po';
 
-describe('typescript-chart App', () => {
-  let page: TypescriptChartPage;
+describe('chart-component App', () => {
+  let page: ChartComponentPage;
 
   beforeEach(() => {
-    page = new TypescriptChartPage();
+    page = new ChartComponentPage();
   });
 
   it('should display message saying app works', () => {
