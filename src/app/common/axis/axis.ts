@@ -1,4 +1,4 @@
-import { AxisConfiguration, AxisConditions } from './../../model/chart-param.interface';
+import { AxisConfiguration, AxisConditions } from './../../model/index';
 import { Axe } from './axe';
 import { IDisplay } from './../i-display.interface';
 
@@ -202,7 +202,7 @@ export abstract class Axis implements IDisplay {
         this.updateDisplay(this.width, this.height);
     }
 
-    protected _updateContainerPosition(svgtarget) {
+    protected _updateContainerPosition(svgtarget: any) {
         let px = 0;
         let py = 0;
         switch (this.orient) {

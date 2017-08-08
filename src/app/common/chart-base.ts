@@ -1,72 +1,108 @@
-import { AxisConfiguration, SeriesConfiguration } from './../model/chart-param.interface';
-import { Axis } from './axis/axis';
+import { AxisConfiguration, SeriesConfiguration } from './../model/index';
+import { Axis } from './axis/index';
 import { IDisplay } from './i-display.interface';
 import { InstanceLoader } from './instance-loader';
-import { ChartException } from '../common/error/chart-exception';
-import { IChartEvent } from './event/chart-event.interface';
-import { ChartEvent } from './event/chart-event';
-import { Observable } from 'rxjs/Observable';
+import { ChartException } from '../common/error/index';
+import { ChartEvent, ChartEventData, EventMap, EventDispatcher } from './event/index';
+import { Series } from './series/index';
+import { PluginCreator } from './plugin-creator';
+import { ChartConfiguration } from '../model/chart.interface';
+import { ArrayCollection } from './array-collection';
+import { ChartPlugin } from './plugin/index';
 
 export class ChartBase implements IDisplay {
 
     colors = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6', '#dd4477', '#66aa00',
         '#b82e2e', '#316395', '#994499', '#22aa99', '#aaaa11', '#6633cc', '#e67300', '#8b0707', '#651067', '#329262', '#5574a6', '#3b3eac'];
 
-    data: Array<any> = [];
     min: number;
     max: number;
+    selectedItem: Array<ChartEventData> = [];
 
-    _configuration: any;
-    _target: any; // target svg element
-    _width: number;
-    _height: number;
-    _axis: any[] = [];
-    _series: any[] = [];
-    _axisGroup: any; // axis group element
-    _seriesGroup: any; // series group element
-    _backgroundGroup: any; // background element
-    _dragGroup: any; // drag area element
-    _margin: any;
-    _domain: any;
-    _dataProvider: Array<any>;
+    private _configuration: any;
+    private _target: any; // target svg element
+    private _width: number;
+    private _height: number;
+    private _axis: any[] = [];
+    private _series: any[] = [];
+    private _plugins: any[] = [];
+    private _axisGroup: any; // axis group element
+    private _seriesGroup: any; // series group element
+    private _backgroundGroup: any; // background element
+    private _dragGroup: any; // drag area element
+    private _margin: any;
+    private _domain: any;
+    private _dataProvider: Array<any> = [];
+    private _arrayCollection: ArrayCollection;
+    private _instanceLoader: InstanceLoader;
+    private _pluginLoader: PluginCreator;
+    private _isStacked = false; // special series ( data parse )
+    private _eventMap: EventMap = {}; // chart event list
+    private _manuals = ['normal', 'zoom', 'multiselection'];
+    private _current_manual = this._manuals[0];
+    private OSName = 'none';
+    private _isCtrlKey: boolean;
 
-    _instance_loader: InstanceLoader;
-    _isStacked = false;
-
-    _event_map: any;
-
-    constructor( config?: any ) {
-        this._instance_loader = new InstanceLoader();
+    constructor( config?: ChartConfiguration ) {
+        this._instanceLoader = new InstanceLoader();
+        this._pluginLoader = new PluginCreator();
         if (config) {
             this.configuration = config;
+            this._keyBind();
         }
     }
 
-    set configuration( value: any ) {
+    set configuration( value: ChartConfiguration ) {
         this._configuration = value;
         if (this._configuration) {
+            this.manual = 'multiselection';
+            if ( this._configuration.chart.selectionMode ) {
+                this.manual = this._configuration.chart.selectionMode;
+            }
             if (!this._configuration.chart.data) {
                 this._setDefaultData();
             } else {
-                this.data = this._configuration.chart.data;
+                this.dataProvider = this._configuration.chart.data;
             }
-            this._clear();
+            this.clear();
             this.margin = this.configuration.chart.margin;
             this._setSize(this.configuration.chart.size.width, this.configuration.chart.size.height);
-            try {
-                this._createSvgElement();
-                this._createComponent();
-            } catch (e) {
-                console.log(e instanceof ChartException);
-                console.log('Error Code : ', e.status);
-                console.log('Error Message : ', e.errorContent.message);
-            }
-            this._addEvent();
+            const eventDispatch: EventDispatcher = EventDispatcher.getInstance(this._configuration.chart.selector);
+            this._createSvgElement();
+            this._createComponent();
+            // try {
+            //     this._createSvgElement();
+            //     this._createComponent();
+            // } catch (e) {
+            //     console.log(e instanceof ChartException);
+            //     console.log('Error Code : ', e.status);
+            //     console.log('Error Message : ', e.errorContent.message);
+            // }
+            this._addSvgEvent();
+            this._addCustomEvent();
+            setTimeout( () => {
+                const currentEvent: ChartEventData = new ChartEventData(this, null, ChartEvent.CREATION_COMPLETE);
+                dispatchEvent( new CustomEvent(ChartEvent.CREATION_COMPLETE, {detail: currentEvent}));
+            }, 500 );
         }
     }
 
     get configuration() {
         return this._configuration;
+    }
+
+    set manual(value: string) {
+        const manualid = this._manuals.indexOf(value);
+        if (manualid > -1) {
+
+            this._current_manual = this._manuals[manualid];
+            this.series.map((s: Series) => {
+                s.manual = this._current_manual;
+            });
+        } else {
+            throw new ChartException(500,
+                {message: `not found manual type ${value}! Please select from ${this._manuals.toString()}`});
+        }
     }
 
     set target( value: any ) {
@@ -94,12 +130,18 @@ export class ChartBase implements IDisplay {
     }
 
     set dataProvider( data: any[] ) {
-        this._dataProvider = data;
+        this._arrayCollection = new ArrayCollection(data);
+        this._arrayCollection.addEventListener(ArrayCollection.DATA_ADDED_ITEM, this._dataChangeEvent);
+        this._arrayCollection.addEventListener(ArrayCollection.DATA_REMOVED_ITEM, this._dataChangeEvent);
         this.updateDisplay();
     }
 
     get dataProvider() {
-        return this._dataProvider;
+        return this._arrayCollection.source;
+    }
+
+    getDataProvider() {
+        return this._arrayCollection;
     }
 
     set axis( value: any[] ) {
@@ -111,11 +153,25 @@ export class ChartBase implements IDisplay {
     }
 
     set series( value: any[] ) {
+        // TODO : series remove 로직 구현.
+        if (this._series.length) {
+            this._series.map((series: Series) => {
+                series.removeAll();
+            } );
+        }
         this._series = this._createSeries(value);
     }
 
     get series(): any[] {
         return this._series;
+    }
+
+    set plugin( value: any[] ) {
+        this._plugins = this._createPlugin(value);
+    }
+
+    get plugin() {
+        return this._plugins;
     }
 
     set margin( value: any ) {
@@ -135,68 +191,123 @@ export class ChartBase implements IDisplay {
     }
 
     addEventListener(type: string, method: any) {
-        if ( !this._event_map ) {
-            this._event_map = {};
-        }
-        this._event_map[type] = method;
+        const selector = this.configuration.chart.selector;
+        addEventListener(selector + '-' + type, method);
     }
 
-    dispatchEvent(type: string, event: any) {
-        if (this._event_map[type]) {
-            this._event_map[type](event);
+    dispatchEvent(type: string, event: ChartEventData) {
+        if (this._eventMap[type]) {
+            this._eventMap[type](event);
         }
     }
 
-    updateDisplay(width?: number, height?: number)  {
-
+    updateDisplay(width?: number, height?: number) {
         if ( width && height ) {
-            this._setSize(width, height);
             this.target
                 .attr('width', width)
                 .attr('height', height);
+            this._setSize(width, height);
             this._backgroundGroup.select('.background-rect')
-                                .attr('width', width - this.margin.left - this.margin.right)
-                                .attr('height', height - this.margin.bottom - this.margin.top);
+                .attr('width', width - this.margin.left - this.margin.right)
+                .attr('height', height - this.margin.bottom - this.margin.top);
         }
-        try {
             this._axisUpdate();
             this._seriesUpdate();
+            this._pluginUpdate();
+        try {
+            
         } catch (e) {
             console.log('Error Code : ', e.status);
             console.log('Error Message : ', e.errorContent.message);
         }
     }
 
+    enabledPlugin(pluginClass: string) {
+        this._plugins.map((plugin: ChartPlugin) => {
+            if (plugin.className === pluginClass) {
+                plugin.enabled();
+            }
+        });
+    }
+
+    disabledPlugin(pluginClass: string) {
+        this._plugins.map((plugin: ChartPlugin) => {
+            if (plugin.className === pluginClass) {
+                plugin.disabled();
+            }
+        });
+    }
+
+    clear() {
+        if (this.target) {
+            this.target.remove();
+            this.target = null;
+            this._axis = null;
+            this._series = null;
+            this._plugins = null;
+        }
+    }
+
+    _dataChangeEvent = (type: string, targetValue: any) => {
+        this.updateDisplay();
+    }
+
+    _keyBind() {
+        if (navigator.appVersion.indexOf('Win') !== -1) { this.OSName = 'Win'; }
+        if (navigator.appVersion.indexOf('Mac') !== -1) { this.OSName = 'Mac'; }
+        if (navigator.appVersion.indexOf('X11') !== -1) { this.OSName = 'UNIX'; }
+        if (navigator.appVersion.indexOf('Linux') !== -1) { this.OSName = 'Linux'; }
+
+        const svgRect: any = this.target;
+        svgRect.on('focus', () => {
+            svgRect
+                .on('keydown', () => {
+                    this.manual = 'multiselection';
+                    if ( this.OSName === 'Win' && d3.event.ctrlKey ) {
+                        this._isCtrlKey = true;
+                    } else if ( this.OSName === 'Mac' && d3.event.keyCode === 91 ) {
+                        this._isCtrlKey = true;
+                    } else {
+                        this._isCtrlKey = false;
+                    }
+                })
+                .on('keyup', () => {
+                    this.manual = 'normal';
+                    this._isCtrlKey = false;
+                });
+        }, svgRect);
+    }
+
     _createSvgElement() {
         this.target = this._createSvg(this.configuration.chart);
         // create background element
         this._backgroundGroup = this.target.append('g')
-                                    .attr('class', 'background')
-                                    .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+            .attr('class', 'background')
+            .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
         this._backgroundGroup.append('rect')
-                             .attr('class', 'background-rect')
-                             .style('fill', '#ccc')
-                             .style('pointer-events', 'all')
-                             .style('opacity', 0)
-                             ;
+            .attr('class', 'background-rect')
+            .style('fill', '#ccc')
+            .style('pointer-events', 'all')
+            .style('opacity', 0)
+        ;
         // generate axis component using this.target
         this._axisGroup = this.target.append('g')
-                              .attr('class', 'axis')
-                              .attr('transform', 'translate(0 ,0)');
+            .attr('class', 'axis')
+            .attr('transform', 'translate(0 ,0)');
         // generate series component using this.target
         this._seriesGroup = this.target.append('g')
-                                .attr('class', 'series')
-                                .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+            .attr('class', 'series')
+            .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
         this._dragGroup = this.target.append('g')
-                              .attr('class', 'draging')
-                              .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+            .attr('class', 'draging')
+            .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
     }
 
     // generate svg element using configuration
     _createComponent() {
         // stacked check
         if (this.configuration.series) {
-            this.configuration.series.map( seriesConfig => {
+            this.configuration.series.map( (seriesConfig: SeriesConfiguration ) => {
                 const type = seriesConfig.type;
                 if (type === 'stacked') { // special case
                     this._isStacked = true;
@@ -205,7 +316,8 @@ export class ChartBase implements IDisplay {
         }
         this.axis = this.configuration.axis;
         this.series = this.configuration.series;
-    };
+        this.plugin = this.configuration.plugin;
+    }
 
     _setSize(width: number, height: number)  {
         this.width = width - (this.margin.left + this.margin.right);
@@ -213,23 +325,25 @@ export class ChartBase implements IDisplay {
     }
 
     _createSvg(chartConfig: any): any {
-        return d3.select(chartConfig.selector).append('svg').attr('id', this.configuration.chart.uid);
+        return d3.select(chartConfig.selector).append('svg')
+            .attr('id', chartConfig.uid);
     }
 
     _createAxis(axisList: Array<any>) {
-        const tempList = [];
-        // tslint:disable-next-line:curly
-        if (!axisList) return tempList;
+        const tempList = <any>[];
+        if (!axisList) {
+            return tempList;
+        }
 
-        axisList.map( axisConfig => {
+        axisList.map( (axisConfig: any) => {
             let axis: Axis;
             const axis_params: AxisConfiguration = {
                 conditions: axisConfig,
-                // target: this._axisGroup,
+                target: this._axisGroup,
                 width: this.width,
                 height: this.height,
                 margin: this.margin,
-                data: this.data,
+                data: this.dataProvider,
                 domain: this.domain,
                 isStacked: this._isStacked
             };
@@ -237,12 +351,12 @@ export class ChartBase implements IDisplay {
             // axisConfig: any, axisTarget: any, width: number, height: number, margin: Array<any>, domain: any
 
             // case 1 : configuration
-            // axis = this._instance_loader.axisFactory(axisConfig.axisClass, axis_params);
+            axis = this._instanceLoader.axisFactory(axisConfig.axisClass, axis_params);
 
             // case 2 : properties
-            axis = this._instance_loader.axisFactory(axisConfig.axisClass, null);
-            axis.configuration = axis_params;
-            axis.target = this._axisGroup;
+            // axis = this._instanceLoader.axisFactory(axisConfig.axisClass, null);
+            // axis.configuration = axis_params;
+            // axis.target = this._axisGroup;
 
             axis.updateDisplay( this.width, this.height );
 
@@ -258,28 +372,31 @@ export class ChartBase implements IDisplay {
     }
 
     _createSeries(seriesList: Array<any>) {
-        const tempList = [];
-
-        if (!seriesList) return tempList;
+        const tempList = <any>[];
+        if (!seriesList) {
+            return tempList;
+        }
 
         if (seriesList.length) {
-            seriesList.map( (seriesConfig, j) => {
+            seriesList.map( (seriesConfig: any, j: number) => {
                 let series: any;
                 const type = seriesConfig.type;
                 const series_configuration: SeriesConfiguration = {
                     condition: seriesConfig,
                     margin: this.margin,
-                    // target: this._seriesGroup,
-                    type: type
+                    target: this._seriesGroup,
+                    type: type,
                 };
-
+                if (seriesConfig.plugin) {
+                    series_configuration.plugin = seriesConfig.plugin;
+                }
                 // case1 : configuration
-                // series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, series_configuration);
+                series = this._instanceLoader.seriesFactory(seriesConfig.seriesClass, series_configuration);
 
                 // case2 : property
-                series = this._instance_loader.seriesFactory(seriesConfig.seriesClass, null);
-                series.configuration = series_configuration;
-                series.target = this._seriesGroup;
+                // series = this._instanceLoader.seriesFactory(seriesConfig.seriesClass, null);
+                // series.configuration = series_configuration;
+                // series.target = this._seriesGroup;
 
                 series.color = this.colors[j];
                 if (type === 'group' || type === 'stacked') { // column set series
@@ -308,119 +425,116 @@ export class ChartBase implements IDisplay {
         return tempList;
     }
 
+    _createPlugin(pluginList: Array<any>) {
+        const tempList = <any>[];
+        if (pluginList && pluginList.length) {
+            pluginList.map((plugin: any) => {
+                const pluginObj = this._pluginLoader.pluginFactory(plugin.pluginClass, this.target, plugin);
+                tempList.push(pluginObj);
+            });
+        }
+        return tempList;
+    }
+
     _axisUpdate() {
-        // tslint:disable-next-line:curly
-        if (!this._axis) return;
+        if (this.axis.length === 0) {
+            return;
+        }
         for (let i = 0 ; i < this._axis.length; i++) {
-            this._axis[i].dataProvider = this.data;
-            this._axis[i].numeric_min = this.min;
-            this._axis[i].numeric_max = this.max;
-            this._axis[i].updateDisplay(this.width, this.height);
+            this.axis[i].dataProvider = this.dataProvider;
+            this.axis[i].numeric_min = this.min;
+            this.axis[i].numeric_max = this.max;
+            this.axis[i].updateDisplay(this.width, this.height);
         }
     }
 
     _seriesUpdate() {
-        // tslint:disable-next-line:curly
-        if (!this._series) return;
-        for (let i = 0; i < this._series.length; i++) {
-            this._series[i].width = this.width;
-            this._series[i].height = this.height;
-            this._series[i].dataProvider = this.data;
+        if (this.series.length === 0) {
+            return;
+        }
+        for (let i = 0; i < this.series.length; i++) {
+            this.series[i].width = this.width;
+            this.series[i].height = this.height;
+            this.series[i].dataProvider = this.dataProvider;
         }
     }
 
-    _clear() {
-        if (this.target) {
-            this.target.remove();
-            this.target = null;
-            this._axis = null;
-            this._series = null;
+    _pluginUpdate() {
+        if (!this._plugins) {
+            return;
+        }
+        for (let i = 0; i < this._plugins.length; i++) {
+            this._plugins[i].updateDisplay(this.width, this.height);
         }
     }
 
-    _addEvent() {
-        console.log('_addEvent : ', this.target);
-        this.target.on('click', d => {
-            if (d3.event.target) {
-                const currentEvent: ChartEvent = new ChartEvent(
-                    d3.event,
-                    d3.select(d3.event.target)[0][0].__data__);
+    _addSvgEvent() {
+        const selector = this.configuration.chart.selector;
+        this.target.on('mousedown', () => {
 
-                if (currentEvent.data === undefined) {
-                    this.series.map((s) => {
-                        s.unselectAll();
-                    });
+                if (d3.event.target) {
+                    const currentEvent: ChartEventData = new ChartEventData(
+                        d3.event,
+                        d3.select(d3.event.target)[0][0].__data__);
+                    if (currentEvent.data === undefined) {
+                        if (!this._isCtrlKey) {
+                            console.log('ctrl not clicked');
+                            this.target.selectAll('*[class^=selection_box]').remove();
+                            this.selectedItem = [];
+                            this.series.map((s: Series) => {
+                                s.unselectAll();
+                            });
+                        }
+                    } else {
+                        if (this._current_manual !== 'multiselection') {
+                            this.selectedItem = [];
+                        }
+                        this.selectedItem.push(currentEvent);
+                    }
+                    dispatchEvent( new CustomEvent(selector + '-' + ChartEvent.ITEM_CLICK, { detail: currentEvent }));
                 }
-                this.dispatchEvent(ChartEvent.ITEM_CLICK, currentEvent);
-            }
-        })
-        .on('mouseover', d => {
-            if (d3.event.target) {
-                const currentEvent: ChartEvent = new ChartEvent(
-                    d3.event,
-                    d3.select(d3.event.target)[0][0].__data__);
-                this.dispatchEvent(ChartEvent.MOUSE_OVER, currentEvent);
-            }
-        })
-        .on('mouseout', d => {
-            if (d3.event.target) {
-                const currentEvent: ChartEvent = new ChartEvent(
-                    d3.event,
-                    d3.select(d3.event.target)[0][0].__data__);
-                this.dispatchEvent(ChartEvent.MOUSE_OUT, currentEvent);
-            }
-        })
-        .on('mousemove', d => {
-            const cX = (d3.event.offsetX - this.margin.left);
-            const cY = (d3.event.offsetY - this.margin.top);
-            // console.log('background mousemove ==> x :', cX, ' , y : ', cY);
-            // console.log('background click ==> event :', d3.event);
-        })
-        .on('remove', d => {
-            // this._itemClick(currentEvent);
+            })
+            .on('mouseover', () => {
+                if (d3.event.target) {
+                    const overTarget: any = d3.select(d3.event.target);
+                    console.log('over target : ', d3.event.target );
+                    const currentEvent: ChartEventData = new ChartEventData(
+                        d3.event,
+                        overTarget[0][0].__data__);
+                    // TODO: TEXT 일 때도 pass why? axis일 경우 이기 때문
+                    if (currentEvent.data && typeof currentEvent.data === 'object' ) {
+
+                    }
+                    dispatchEvent( new CustomEvent(selector + '-' + ChartEvent.MOUSE_OVER, { detail: currentEvent }));
+                }
+            })
+            .on('mouseout', () => {
+                if (d3.event.target) {
+                    const currentEvent: ChartEventData = new ChartEventData(
+                        d3.event,
+                        d3.select(d3.event.target)[0][0].__data__);
+                    dispatchEvent( new CustomEvent(selector + '-' + ChartEvent.MOUSE_OUT, { detail: currentEvent }));
+                }
+            });
+    }
+
+    _addCustomEvent() {
+        this.target[0][0].addEventListener(ChartEvent.SELECT_ALL_ITEM, (event: CustomEvent) => {
+            this.selectedItem.push(event.detail);
+            console.log(this.selectedItem);
         });
-
-        const mouseDowns = Observable.fromEvent(this.target[0][0], 'mousedown');
-        const mouseUps = Observable.fromEvent(this.target[0][0], 'mouseup');
-        const mouseMoves = Observable.fromEvent(this.target[0][0], 'mousemove');
-
-        let offsetX = 0; // start x
-        let offsetY = 0; // start y
-        let moveX = 0;
-        let moveY = 0;
-
-        mouseDowns.map(function () {
-            return mouseMoves.takeUntil(mouseUps);
-        })
-        .concatAll()
-        .subscribe( (e: any) => {
-            const leftp = e.x - offsetX + 'px';
-            const topp = e.y - offsetY + 'px';
-            // console.log( 'left: ', leftp, 'top:', topp );
-        });
-
-        mouseDowns.subscribe( (e: any) => {
-            offsetX = e.offsetX - this.margin.top + 1;
-            offsetY = e.offsetY - this.margin.left + 1;
-            console.log( 'mouseDowns x: ', offsetX, 'y:', offsetY );
-        });
-
-        mouseUps.subscribe( (e: any) => {
-            moveX = e.offsetX - this.margin.top - 1;
-            moveY = e.offsetY - this.margin.left - 1;
-            console.log( 'mouseUps x: ', moveX, 'y:', moveY );
-        });
-
-    };
+    }
 
     _setDefaultData() {
+        const testData: Array<any> = [];
         for (let i = 0; i < 20; i++) {
-            this.data.push( {  category: 'A' + i,
-                           date: new Date(2017, 0, i).getTime(),
-                           rate: Math.round( Math.random() * 10 ),
-                           ratio: Math.round( Math.random() * 110  ),
-                           revenue: Math.round( Math.random() * 120  ),
-                           profit: Math.round( Math.random() * 100  ) } );
+            testData.push( {  category: 'A' + i,
+                date: new Date(2017, 0, i).getTime(),
+                rate: Math.round( Math.random() * 10 ),
+                ratio: Math.round( Math.random() * 110  ),
+                revenue: Math.round( Math.random() * 120  ),
+                profit: Math.round( Math.random() * 100  ) } );
         }
+        this.dataProvider = testData;
     }
 }

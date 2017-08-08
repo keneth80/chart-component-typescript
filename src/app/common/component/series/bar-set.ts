@@ -1,26 +1,28 @@
 import { BarSeries } from './bar-series';
 import { IDisplay } from './../../i-display.interface';
-import { Axe } from './../../axis/axe';
-import { InstanceLoader } from './../../instance-loader';
-import { SeriesConfiguration } from './../../../model/chart-param.interface';
+import { Axe } from './../../axis/index';
+import { SeriesConfiguration } from './../../../model/index';
+import { Dragable } from '../../plugin/drag-selector/model/drag-model';
+import { Series } from '../../series/series';
+import { PluginCreator } from '../../plugin-creator';
 
 export class BarSet implements IDisplay {
 
-    _width: number;
-    _height: number;
-    _target: any;
-
-    _series: Array<BarSeries>;
-    _type: string;
-    _configuration: SeriesConfiguration;
-
-    _dataProvider: Array<any>;
-    _xAxe: Axe;
-    _yAxe: Axe;
-    _x: any;
-    _y: any;
-
-    _seriesCnt: number;
+    private _width: number;
+    private _height: number;
+    private _target: any;
+    private _type: string;
+    private _xAxe: Axe;
+    private _yAxe: Axe;
+    private _x: any;
+    private _y: any;
+    private _manual: string;
+    private _seriesCnt: number;
+    private _series: Array<BarSeries>;
+    private _configuration: SeriesConfiguration;
+    private _dataProvider: Array<any>;
+    private _pluginLoader: PluginCreator;
+    private _componentPlugin: Array<any> = [];
 
     constructor(configuration?: SeriesConfiguration) {
         if (configuration) {
@@ -29,9 +31,11 @@ export class BarSet implements IDisplay {
     }
 
     set configuration(value: any) {
+        this._pluginLoader = new PluginCreator();
         this._configuration = value;
         if (this._configuration) {
             this.type = this._configuration.type;
+            this.target = this._configuration.target;
         }
     }
 
@@ -119,9 +123,19 @@ export class BarSet implements IDisplay {
         return this._dataProvider;
     }
 
+    set manual(value: string) {
+        this._manual = value;
+        this.series.map((s: Series) => {
+            s.manual = this.manual;
+        });
+    }
+
+    get manual() {
+        return this._manual;
+    }
+
     updateDisplay(width?: number, height?: number) {
-        const fieldSet: Array<string> = this.series.map(d => { return d.xField; });
-        console.log(`ColumnSet ===> total field ${fieldSet}`);
+        const fieldSet: Array<string> = this.series.map((d: Series) => { return d.xField; });
         for ( let i = 0; i < this.series.length; i++ ) {
             this.series[i].seriesCnt = this.series.length;
             this.series[i].seriesIndex = i;
@@ -129,11 +143,32 @@ export class BarSet implements IDisplay {
             this.series[i].stackField = fieldSet;
             this.series[i].dataProvider = this._dataProvider;
         }
+        this._pluginCreate();
+    }
+
+    _pluginCreate() {
+
+        if (this._configuration.plugin) {
+            this._configuration.plugin.map((p: any) => {
+                this._componentPlugin.push(this._pluginLoader.pluginFactory(p.pluginClass, this.target, p));
+            });
+        }
+        this._componentPlugin.map((p: any) => {
+            for ( let i = 0; i < this.series.length; i++ ) {
+                p.seriesInfo = this.series[i];
+                p.updateDisplay();
+            }
+        });
     }
 
     unselectAll() {
         for ( let i = 0; i < this.series.length; i++ ) {
             this.series[i].unselectAll();
+        }
+    }
+    selectAll(event: Dragable) {
+        for ( let i = 0; i < this.series.length; i++ ) {
+            this.series[i].selectAll(event);
         }
     }
 }
