@@ -1,6 +1,11 @@
-import { Axe } from './../../axis/axe';
-import { AxisConfiguration } from './../../../model/chart-param.interface';
-import { Axis } from '../../axis/axis';
+import { Axe, Axis  } from './../../axis/index';
+import { AxisConfiguration } from './../../../model/index';
+
+interface DomainCompare {
+    field: string;
+    minValue: number;
+    maxValue: number;
+}
 
 export class NumericAxis extends Axis {
 
@@ -58,7 +63,7 @@ export class NumericAxis extends Axis {
             this.domain = [];
             if (this.isStacked) {
                 for (let i = 0; i < this.dataProvider.length; i++) {
-                    const currentObj = this.dataProvider[i];
+                    const currentObj: any = this.dataProvider[i];
                     maxTmp = 0;
                     minTmp = 0;
                     for (let j = 0; j < targetArray.length; j++) {
@@ -79,12 +84,14 @@ export class NumericAxis extends Axis {
                 this.domain.push(max + (max * 0.1));
             } else {
                 for (let i = 0; i < targetArray.length; i++) {
-                    maxTmp = _.maxBy(this.dataProvider, targetArray[i]);
-                    minTmp = _.minBy(this.dataProvider, targetArray[i]);
-                    const obj: any = {
-                        field: targetArray[i],
-                        minValue: minTmp[targetArray[i]],
-                        maxValue: maxTmp[targetArray[i]]
+                    const field: string = targetArray[i]
+                    const minTemp: any = _.minBy(this.dataProvider, field);
+                    const maxTemp: any = _.maxBy(this.dataProvider, field);
+
+                    const obj: DomainCompare = {
+                        field: field,
+                        minValue: minTemp[field],
+                        maxValue: maxTemp[field]
                     };
                     tempArray.push(obj);
                 }
@@ -145,7 +152,6 @@ export class NumericAxis extends Axis {
                             .domain([this.numeric_min, this.numeric_max])
                             .range(temp_range);
 
-        const scaley: number = temp_scale(0);
-        return scaley;
+        return temp_scale(0);
     }
 }

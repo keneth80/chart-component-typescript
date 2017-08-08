@@ -1,6 +1,5 @@
-import { Axe } from './../../axis/axe';
-import { AxisConfiguration } from './../../../model/chart-param.interface';
-import { Axis } from '../../axis/axis';
+import { Axe, Axis  } from './../../axis/index';
+import { AxisConfiguration } from './../../../model/index';
 
 export class CategoryAxis extends Axis {
 
@@ -55,7 +54,7 @@ export class CategoryAxis extends Axis {
         if (this.tickInfo.ticks % 2) {
             ticksize = ticksize + 1;
         }
-        const tempArray: Array<any> = this.axe.scale.domain().map((d, i) => {
+        const tempArray: Array<any> = this.axe.scale.domain().map((d: any, i: any) => {
             if (i === 0) {
                 return d;
             } else {
@@ -66,13 +65,13 @@ export class CategoryAxis extends Axis {
                 }
             }
         });
-        const tickArray: Array<any> = tempArray.filter(d =>  d !== 0 );
+        const tickArray: Array<any> = tempArray.filter( (d: any) =>  d !== 0 );
         this.axe.scaleToAxe.tickValues(tickArray);
     }
 
     _tickRotate() {
         this.target.selectAll('text').style('text-anchor', 'start')
-                                     .attr('transform', d => {
+                                     .attr('transform', (d: any) => {
                                        return 'rotate(45)';
                                       });
     }

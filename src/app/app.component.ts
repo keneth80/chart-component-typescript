@@ -1,22 +1,23 @@
 import { Component, OnInit } from '@angular/core';
-import { LegendConfiguration } from './model/legend.interface';
+import { Subject } from 'rxjs/Subject';
+import { Observable } from 'rxjs/Observable';
 import { AppService } from './app.service';
-import { Observable } from 'rxjs/observable';
-import { Subject } from 'rxjs/';
-
 
 @Component({
+  moduleId: module.id,
   selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  templateUrl: 'app.component.html',
+  styleUrls: ['app.component.css']
 })
+
 export class AppComponent implements OnInit {
     title = 'app works!';
     currentType: string;
     chartinfo: any;
     axis: any;
     series: any;
-    legendinfo: LegendConfiguration;
+    plugin: any;
+    legendinfo: any;
     data: Array<any>;
     chartTypeClick$: Subject<string> = new Subject();
     currentConfiguration: any;
@@ -24,30 +25,27 @@ export class AppComponent implements OnInit {
     responseStream: Observable<any>;
 
     constructor(
-        private appS: AppService
+        // private mipchartS: MipChartService
+        private chartService: AppService
     ) {
-        this.responseStream = this.chartTypeClick$.flatMap((type: string) => {
+        this.chartTypeClick$.subscribe((type: string) => {
+            console.log('click : ', type);
             this.currentType = type;
-            return this.appS.getChartConfiguration(type);
+            this.chartService.getChartConfiguration(type)
+                                .subscribe((res: any) => {
+                                    console.log(res);
+                                    this._setDefaultData();
+                                    this._chartDrawSetting(res);
+                                });
+            ;
+            // this.mipchartS.getChartConfiguration(type).then((res: any) => {
+            //     console.log(res);
+            //     this._setDefaultData();
+            //     this._chartDrawSetting(res);
+            // }).catch((err: any) => {
+            //     console.log('Error : ', err);
+            // });
         });
-
-        this.responseStream.subscribe(
-            (res) => {
-
-                this._setDefaultData();
-                // const re = /(:{)/g;
-                // const comma = /(,)/g;
-                // this.currentConfigurationString = JSON.stringify(res).replace(re, ':\n\t{' ).replace(comma, ',\n');
-                this._chartDrawSetting(res);
-            },
-            (err) => {
-                console.log('Error : ', err);
-            },
-            () => {
-                console.log('complete');
-            }
-        );
-
     }
 
     ngOnInit() {
@@ -56,7 +54,7 @@ export class AppComponent implements OnInit {
         // default chart configuration setting
 
         this.chartinfo = {
-            selector: '#div_01',
+            selector: '',
             uid: 'chart01_uid',
             size: {
                 width: 800,
@@ -82,7 +80,7 @@ export class AppComponent implements OnInit {
                 title: 'Profit',
                 tickInfo : {
                     ticks: 5,
-                    tickFormat: function(d) { return '$' + d3.format(',.0f')(d); }
+                    tickFormat: function(d: any) { return '$' + d3.format(',.0f')(d); }
                 }
             },
             {
@@ -123,7 +121,7 @@ export class AppComponent implements OnInit {
                 title: 'Rate',
                 tickInfo : {
                     ticks: 5,
-                    tickFormat: function(d) { return d3.format(',.0f')(d) + '%'; }
+                    tickFormat: function(d: any) { return d3.format(',.0f')(d) + '%'; }
                 }
             }
         ];
@@ -136,6 +134,14 @@ export class AppComponent implements OnInit {
                 displayName: 'Profit'
             },
         ];
+
+        this.plugin = [
+            {
+                pluginClass: 'DragBase',
+                direction: 'horizontal'
+            }
+        ];
+
         this.legendinfo = {
             selector: '#div_02',
             orient: 'bottom',
@@ -151,21 +157,21 @@ export class AppComponent implements OnInit {
         this.data = [];
         for (let i = 0; i < 20; i++) {
             this.data.push( {  category: 'B' + i,
-                           date: new Date(2017, 0, i).getTime(),
-                           rate: Math.round( Math.random() * 10 ),
-                           ratio: Math.round( Math.random() * 110  ),
-                           revenue: Math.round( Math.random() * 120  ),
-                           profit: Math.round( Math.random() * 100  ) } );
+                date: new Date(2017, 0, i).getTime(),
+                rate: Math.round( Math.random() * 10 ),
+                ratio: Math.round( Math.random() * 110  ),
+                revenue: Math.round( Math.random() * 120  ),
+                profit: Math.round( Math.random() * 100  ) } );
         }
     }
 
     _chartDrawSetting(data: any) {
-
         this.currentConfiguration = data;
         this.currentConfigurationString = JSON.stringify(data, undefined, 4);
         this.chartinfo = this.currentConfiguration.chart;
         this.series = this.currentConfiguration.series;
         this.axis = this.currentConfiguration.axis;
+        this.plugin = this.currentConfiguration.plugin;
 
         this.legendinfo = {
             selector: '#div_02',
