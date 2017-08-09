@@ -15,10 +15,20 @@ import { ChartEvent, ChartEventData } from '../../common/event/index';
             -o-user-select: none;
             user-select: none;
         }
-        path, line {
+        .axis {
+            font: 12px sans-serif;
+        }
+
+        .axis path, 
+        .axis line {
             fill: none;
             stroke: #ccc;
             shape-rendering: crispEdges;
+        }
+
+        .series text {
+            font: 11px bold sans-serif;
+            fill: #777;
         }
 
         .unactive {
@@ -32,6 +42,8 @@ import { ChartEvent, ChartEventData } from '../../common/event/index';
         svg:focus {
             outline: none;
         }
+
+        
     `],
     encapsulation: ViewEncapsulation.None
 })
