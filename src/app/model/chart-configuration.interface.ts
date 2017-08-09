@@ -28,6 +28,12 @@ export module AxisType {
         static CATEGORY_AXIS = 'CategoryAxis';
     }
 
+    export class AxisDataTypes {
+        static STRING = 'string';
+        static DATE = 'date';
+        static NUMBER = 'number';
+    }
+
     export class AxisOrients {
         static TOP = 'top';
         static BOTTOM = 'bottom';

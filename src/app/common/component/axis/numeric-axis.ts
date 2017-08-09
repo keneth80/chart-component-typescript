@@ -84,7 +84,7 @@ export class NumericAxis extends Axis {
                 this.domain.push(max + (max * 0.1));
             } else {
                 for (let i = 0; i < targetArray.length; i++) {
-                    const field: string = targetArray[i]
+                    const field: string = targetArray[i];
                     const minTemp: any = _.minBy(this.dataProvider, field);
                     const maxTemp: any = _.maxBy(this.dataProvider, field);
 

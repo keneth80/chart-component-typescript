@@ -13,6 +13,7 @@ export abstract class Axis implements IDisplay {
     _title: string;
     _domain: Array<any>;
     _type: string;
+    _datatype = 'string'; // number, date
     _orient: string;
     _margin: any;
     _target: any;  // svg group element value
@@ -136,6 +137,14 @@ export abstract class Axis implements IDisplay {
         return this._type;
     }
 
+    set datatype(value: string) {
+        this._datatype = value;
+    }
+
+    get datatype() {
+        return this._datatype;
+    }
+
     set orient( value: string ) {
         this._orient = value;
     }
@@ -162,6 +171,7 @@ export abstract class Axis implements IDisplay {
 
     set dataProvider( value: Array<any> ) {
         this._dataProvider = value;
+        console.log('axis.dataProvider ==> ', this.domain);
         if ( !this.domain ) {
             this._createDefaultDomain();
         }
@@ -190,6 +200,7 @@ export abstract class Axis implements IDisplay {
         this.visible = conditions.visible;
         this.title = conditions.title;
         this.type = conditions.type;
+        this.datatype = conditions.datatype;
         this.orient = conditions.orient;
         this.gridline = conditions.gridline;
         if (conditions.tickInfo) {

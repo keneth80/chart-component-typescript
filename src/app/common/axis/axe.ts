@@ -27,7 +27,7 @@ export class Axe {
         return this._scale;
     }
 
-    set itemDimensions(value:number) {
+    set itemDimensions(value: number) {
         this._itemDimensions = value;
     }
 

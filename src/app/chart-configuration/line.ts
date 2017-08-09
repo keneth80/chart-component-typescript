@@ -18,7 +18,8 @@ export const LINE: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'y',
-            'field': 'profit,revenue,ratio',
+            'datatype': 'number',
+            'field': 'profit',
             'format': null,
             'orient': 'left',
             'visible': true,
@@ -31,6 +32,7 @@ export const LINE: any = {
         {
             'axisClass': 'CategoryAxis',
             'type': 'x',
+            'datatype': 'string',
             'field': 'category',
             'format': null,
             'orient': 'bottom',
@@ -45,6 +47,7 @@ export const LINE: any = {
         {
             'axisClass': 'DateTimeAxis',
             'type': 'x',
+            'datatype': 'date',
             'field': 'date',
             'format': null,
             'orient': 'top',
@@ -58,6 +61,7 @@ export const LINE: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'y',
+            'datatype': 'number',
             'field': 'rate',
             'format': null,
             'orient': 'right',
