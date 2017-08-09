@@ -45,7 +45,9 @@ export class LineSeries extends Series {
     createItem() {
         return this.target.datum(this.dataProvider)
                             .append('path')
-                            .attr('class', this.displayName + this.index);
+                            .attr('class', this.displayName + this.index)
+                            .style('fill', 'none')
+                            .style('stroke', this.color);
     }
 
 }

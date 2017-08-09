@@ -32,7 +32,7 @@ export abstract class Series implements IDisplay {
     private _dataProvider: Array<any>;
     // single data
     private _data: any;
-    private _index: number;
+    private _index = 0;
 
     private _rectWidthDimensions: number;
     private _rectHeightDimensions: number;
