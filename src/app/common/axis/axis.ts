@@ -171,7 +171,6 @@ export abstract class Axis implements IDisplay {
 
     set dataProvider( value: Array<any> ) {
         this._dataProvider = value;
-        console.log('axis.dataProvider ==> ', this.domain);
         if ( !this.domain ) {
             this._createDefaultDomain();
         }
