@@ -55,15 +55,19 @@ export class SvgLegend extends Legend {
                 .style('font-size', '12px')
                 .text( d.displayName );
 
+            const bbox: any = item.node().getBBox();
+
             item.append('rect')
-                .attr('width', item.node().getBBox().width)
-                .attr('height', item.node().getBBox().height)
+                .attr('width', bbox.width)
+                .attr('height', bbox.height)
                 .style('fill', '#fff')
                 .style('opacity', 0);
 
-            if ( compareWidth - this.padding < currentX + text.node().getBBox().width + ( this.rectWidth + this.padding ) ) {
+            const txtbox: any = text.node().getBBox();
+
+            if ( compareWidth - this.padding < currentX + txtbox.width + ( this.rectWidth + this.padding ) ) {
                 currentX = 0;
-                currentY += item.node().getBBox().height + 2;
+                currentY += bbox.height + 2;
 
                 row = this.container.append('g')
                     .attr('class', 'legend-row')
@@ -78,19 +82,21 @@ export class SvgLegend extends Legend {
             currentX += item.node().getBBox().width + this.padding;
             this._addEvent(item);
         });
-
-        const group_width: number = this.container.node().getBBox().width;
+        const containerBox: any = this.container.node().getBBox();
+        const group_width: number = containerBox.width;
+        const group_height: number = containerBox.height;
         const repositionX: number = (this.width / 2) - (group_width / 2);
-        this.container.attr('transform', `translate(${repositionX},${0})`);
-
+        let repositionY: number = (this.height / 2) - (group_height / 2);
         if (rowCnt > 1) {
             this.container.selectAll('.legend-row')
-                .attr('transform', function(){
+                .attr('transform', function() {
                     const curRow = d3.select(this);
                     const xRowPosition: number = ( compareWidth / 2 - curRow.node().getBBox().width / 2 - 30 );
                     return `translate( ${xRowPosition}, 0 )`;
                 });
+            repositionY = 0;
         }
+        this.container.attr('transform', `translate(${repositionX}, ${repositionY})`);
     }
 
     _addEvent(item: any) {
