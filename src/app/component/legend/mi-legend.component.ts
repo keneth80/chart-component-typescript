@@ -5,7 +5,7 @@ import { Legend, SvgLegend } from '../../common/index';
 
 
 @Component({
-    selector: 'mi-legend',
+    selector: 'app-mi-legend',
     templateUrl: 'mi-legend.component.html',
     styles: ['mi-legend.component.css'],
     encapsulation: ViewEncapsulation.None
