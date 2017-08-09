@@ -256,6 +256,26 @@ export abstract class Series implements IDisplay {
                         .remove();
     }
 
+    _scaleSetting(type: string, field: string): Axe {
+        const _range: Array<Number> = [];
+        if (type === 'x') {
+            _range.push(0);
+            _range.push(this.chartWidth);
+        } else {
+            _range.push(this.chartHeight);
+            _range.push(0);
+        }
+        const domain = this.dataProvider.map( d => {
+            return d[field];
+        });
+        const _scale = d3.scale.linear()
+                        .domain(domain)
+                        .range(_range);
+        const axe = new Axe();
+        axe.scale = _scale;
+        return axe;
+    }
+
     /*
      * title : _addEventListener
      * description : add eventlistener of created svg element
@@ -304,6 +324,7 @@ export abstract class Series implements IDisplay {
             this._chartWidth = backWidth;
             this._chartHeight = backHeight;
         }
+        this._scaleSetting('x', this.xField);
     }
 
     selectAll(event: Dragable) {}
@@ -351,6 +372,5 @@ export abstract class Series implements IDisplay {
 
     removeAll() {
         const elements: Array<any> = this.target.selectAll('*');
-        console.log('removeAll : ', elements);
     }
 }

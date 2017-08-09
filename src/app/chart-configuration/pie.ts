@@ -18,6 +18,7 @@ export const PIE: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'y',
+            'datatype': 'number',
             'field': 'profit,revenue,ratio',
             'format': null,
             'orient': 'left',
@@ -31,6 +32,7 @@ export const PIE: any = {
         {
             'axisClass': 'CategoryAxis',
             'type': 'x',
+            'datatype': 'string',
             'field': 'category',
             'format': null,
             'orient': 'bottom',
@@ -45,6 +47,7 @@ export const PIE: any = {
         {
             'axisClass': 'DateTimeAxis',
             'type': 'x',
+            'datatype': 'date',
             'field': 'date',
             'format': null,
             'orient': 'top',
@@ -58,6 +61,7 @@ export const PIE: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'y',
+            'datatype': 'number',
             'field': 'rate',
             'format': null,
             'orient': 'right',

@@ -139,8 +139,8 @@ export class ColumnSeries extends Series {
             const min: number = this.yAxe.scale.domain()[0];
             const max: number = this.yAxe.scale.domain()[1];
             const targetValue: number = this.data[this.yField];
-            let compareValue: number = 0;
-            let currentField: string = '';
+            let compareValue = 0;
+            let currentField = '';
             if (targetValue < 0) {
                 if (this.seriesIndex > 0) {
                     for (let i = 0; i < this.seriesIndex; i++) {

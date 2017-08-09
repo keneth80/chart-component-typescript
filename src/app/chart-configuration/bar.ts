@@ -18,7 +18,8 @@ export const BAR: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'x',
-            'field': 'profit,revenue,ratio',
+            'datatype': 'number',
+            'field': 'revenue',
             'format': null,
             'orient': 'bottom',
             'visible': true,
@@ -31,6 +32,7 @@ export const BAR: any = {
         {
             'axisClass': 'CategoryAxis',
             'type': 'y',
+            'datatype': 'string',
             'field': 'category',
             'format': null,
             'orient': 'left',
@@ -45,6 +47,7 @@ export const BAR: any = {
         {
             'axisClass': 'DateTimeAxis',
             'type': 'x',
+            'datatype': 'date',
             'field': 'date',
             'format': null,
             'orient': 'top',
@@ -58,6 +61,7 @@ export const BAR: any = {
         {
             'axisClass': 'NumericAxis',
             'type': 'y',
+            'datatype': 'number',
             'field': 'rate',
             'format': null,
             'orient': 'right',

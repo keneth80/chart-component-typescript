@@ -25,7 +25,6 @@ export class AppComponent implements OnInit {
     responseStream: Observable<any>;
 
     constructor(
-        // private mipchartS: MipChartService
         private chartService: AppService
     ) {
         this.chartTypeClick$.subscribe((type: string) => {
@@ -37,14 +36,6 @@ export class AppComponent implements OnInit {
                                     this._setDefaultData();
                                     this._chartDrawSetting(res);
                                 });
-            ;
-            // this.mipchartS.getChartConfiguration(type).then((res: any) => {
-            //     console.log(res);
-            //     this._setDefaultData();
-            //     this._chartDrawSetting(res);
-            // }).catch((err: any) => {
-            //     console.log('Error : ', err);
-            // });
         });
     }
 
@@ -72,7 +63,8 @@ export class AppComponent implements OnInit {
             {
                 axisClass: 'NumericAxis',
                 type: 'y',
-                field: 'profit,revenue,ratio',
+                datatype: 'number',
+                field: 'profit',
                 format: undefined,
                 orient: 'left',
                 visible: true,
@@ -86,6 +78,7 @@ export class AppComponent implements OnInit {
             {
                 axisClass: 'CategoryAxis',
                 type: 'x',
+                datatype: 'string',
                 field: 'category',
                 format: undefined,
                 orient: 'bottom',
@@ -100,6 +93,7 @@ export class AppComponent implements OnInit {
             {
                 axisClass: 'DateTimeAxis',
                 type: 'x',
+                datatype: 'date',
                 field: 'date',
                 format: undefined,
                 orient: 'top',
@@ -113,6 +107,7 @@ export class AppComponent implements OnInit {
             {
                 axisClass: 'NumericAxis',
                 type: 'y',
+                datatype: 'number',
                 field: 'rate',
                 format: undefined,
                 orient: 'right',
@@ -147,6 +142,11 @@ export class AppComponent implements OnInit {
             orient: 'bottom',
             series: this.series
         };
+        const config: any = { chart: this.chartinfo,
+                              axis: this.axis,
+                              series: this.series,
+                              plugin: this.plugin };
+        this.currentConfigurationString = JSON.stringify(config, undefined, 4);
     }
 
     rerun() {

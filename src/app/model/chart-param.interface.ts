@@ -39,6 +39,7 @@ export interface AxisConditions {
     gridline: boolean;
     title: string;
     type: string;
+    datatype: string;
     orient: string;
     tickInfo?: any;
 }

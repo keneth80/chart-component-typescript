@@ -64,6 +64,51 @@ export class ChartBase implements IDisplay {
             } else {
                 this.dataProvider = this._configuration.chart.data;
             }
+            // data 가 있다면 axis 설정대로 domain을 뽑아내 axis config에 설정한다.
+            // axis domain init
+            for ( let j = 0; j < this._configuration.axis.length; j++ ) {
+                const tempAxis: any = this._configuration.axis[j];
+                tempAxis.domain = undefined;
+            }
+            for ( let i = 0; i < this.dataProvider.length; i++ ) {
+                const tempObj: any = this.dataProvider[i];
+                for ( let j = 0; j < this._configuration.axis.length; j++ ) {
+                    const tempAxis: any = this._configuration.axis[j];
+                    const axisFields: Array<string> = tempAxis.field.split(',');
+                    if (!tempAxis.domain) {
+                        tempAxis.domain = [];
+                        tempAxis.min = 0;
+                        tempAxis.max = 0;
+                    }
+                    if (tempAxis.datatype === 'string') {
+                        const axisField: string = axisFields[0];
+                        tempAxis.domain.push(tempObj[axisField]);
+                    } else {
+                        // stacked 경우와 더불어 domain 추출하기.
+                        // domain min, max setup
+                        if (tempAxis.domain.length === 0) {
+                            tempAxis.domain = [0, 0];
+                        }
+                        let tempNum = 0;
+                        if (axisFields.length > 1) {
+                            axisFields.map((d: any) => {
+                                tempNum += tempObj[d];
+                            });
+                        } else {
+                            tempNum = tempObj[axisFields[0]];
+                        }
+                        // date type min value init
+                        if (tempAxis.datatype === 'date' && i === 0) {
+                            tempAxis.min = tempNum;
+                        }
+                        tempAxis.min = Math.min(tempAxis.min, tempNum);
+                        tempAxis.max = Math.max(tempAxis.max, tempNum + (tempNum * 0.1));
+                        tempAxis.domain[0] = tempAxis.min;
+                        tempAxis.domain[1] = tempAxis.max;
+                    }
+                }
+            }
+            // console.log('axis configuration => ', this._configuration.axis);
             this.clear();
             this.margin = this.configuration.chart.margin;
             this._setSize(this.configuration.chart.size.width, this.configuration.chart.size.height);
@@ -214,12 +259,11 @@ export class ChartBase implements IDisplay {
             this._axisUpdate();
             this._seriesUpdate();
             this._pluginUpdate();
-        try {
-            
-        } catch (e) {
-            console.log('Error Code : ', e.status);
-            console.log('Error Message : ', e.errorContent.message);
-        }
+        // try {
+        // } catch (e) {
+        //     console.log('Error Code : ', e.status);
+        //     console.log('Error Message : ', e.errorContent.message);
+        // }
     }
 
     enabledPlugin(pluginClass: string) {
@@ -246,6 +290,13 @@ export class ChartBase implements IDisplay {
             this._series = null;
             this._plugins = null;
         }
+    }
+
+    _extractDomain(field: string, data: Array<any>) {
+        const domain = data.map( d => {
+            return d[field];
+        });
+        return domain;
     }
 
     _dataChangeEvent = (type: string, targetValue: any) => {
@@ -344,7 +395,7 @@ export class ChartBase implements IDisplay {
                 height: this.height,
                 margin: this.margin,
                 data: this.dataProvider,
-                domain: this.domain,
+                domain: axisConfig.domain,
                 isStacked: this._isStacked
             };
 
