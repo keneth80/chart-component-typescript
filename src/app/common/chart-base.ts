@@ -65,49 +65,7 @@ export class ChartBase implements IDisplay {
                 this.dataProvider = this._configuration.chart.data;
             }
             // data 가 있다면 axis 설정대로 domain을 뽑아내 axis config에 설정한다.
-            // axis domain init
-            for ( let j = 0; j < this._configuration.axis.length; j++ ) {
-                const tempAxis: any = this._configuration.axis[j];
-                tempAxis.domain = undefined;
-            }
-            for ( let i = 0; i < this.dataProvider.length; i++ ) {
-                const tempObj: any = this.dataProvider[i];
-                for ( let j = 0; j < this._configuration.axis.length; j++ ) {
-                    const tempAxis: any = this._configuration.axis[j];
-                    const axisFields: Array<string> = tempAxis.field.split(',');
-                    if (!tempAxis.domain) {
-                        tempAxis.domain = [];
-                        tempAxis.min = 0;
-                        tempAxis.max = 0;
-                    }
-                    if (tempAxis.datatype === 'string') {
-                        const axisField: string = axisFields[0];
-                        tempAxis.domain.push(tempObj[axisField]);
-                    } else {
-                        // stacked 경우와 더불어 domain 추출하기.
-                        // domain min, max setup
-                        if (tempAxis.domain.length === 0) {
-                            tempAxis.domain = [0, 0];
-                        }
-                        let tempNum = 0;
-                        if (axisFields.length > 1) {
-                            axisFields.map((d: any) => {
-                                tempNum += tempObj[d];
-                            });
-                        } else {
-                            tempNum = tempObj[axisFields[0]];
-                        }
-                        // date type min value init
-                        if (tempAxis.datatype === 'date' && i === 0) {
-                            tempAxis.min = tempNum;
-                        }
-                        tempAxis.min = Math.min(tempAxis.min, tempNum);
-                        tempAxis.max = Math.max(tempAxis.max, tempNum + (tempNum * 0.1));
-                        tempAxis.domain[0] = tempAxis.min;
-                        tempAxis.domain[1] = tempAxis.max;
-                    }
-                }
-            }
+            this._extractDomain();
             // console.log('axis configuration => ', this._configuration.axis);
             this.clear();
             this.margin = this.configuration.chart.margin;
@@ -175,9 +133,12 @@ export class ChartBase implements IDisplay {
     }
 
     set dataProvider( data: any[] ) {
+        this._dataProvider = data;
         this._arrayCollection = new ArrayCollection(data);
         this._arrayCollection.addEventListener(ArrayCollection.DATA_ADDED_ITEM, this._dataChangeEvent);
         this._arrayCollection.addEventListener(ArrayCollection.DATA_REMOVED_ITEM, this._dataChangeEvent);
+        // data 가 있다면 axis 설정대로 domain을 뽑아내 axis config에 설정한다.
+        this._extractDomain();
         this.updateDisplay();
     }
 
@@ -292,12 +253,77 @@ export class ChartBase implements IDisplay {
         }
     }
 
-    _extractDomain(field: string, data: Array<any>) {
-        const domain = data.map( d => {
-            return d[field];
-        });
-        return domain;
+    _extractDomain() {
+        // axis domain init
+        for ( let j = 0; j < this._configuration.axis.length; j++ ) {
+            const tempAxis: any = this._configuration.axis[j];
+            tempAxis.domain = undefined;
+        }
+        // only once of data loop
+        for ( let i = 0; i < this.dataProvider.length; i++ ) {
+            const tempObj: any = this.dataProvider[i];
+            for ( let j = 0; j < this._configuration.axis.length; j++ ) {
+                const tempAxis: any = this._configuration.axis[j];
+                const axisFields: Array<string> = tempAxis.field.split(',');
+                if (!tempAxis.domain) {
+                    tempAxis.domain = [];
+                    tempAxis.min = 0;
+                    tempAxis.max = 0;
+                }
+                if (tempAxis.datatype === 'string') {
+                    const axisField: string = axisFields[0];
+                    tempAxis.domain.push(tempObj[axisField]);
+                } else {
+                    // stacked 경우와 더불어 domain 추출하기.
+                    // domain min, max setup
+                    if (tempAxis.domain.length === 0) {
+                        tempAxis.domain = [0, 0];
+                    }
+                    let tempNum = 0;
+                    if (axisFields.length > 1) {
+                        axisFields.map((d: any) => {
+                            tempNum += tempObj[d];
+                        });
+                    } else {
+                        tempNum = tempObj[axisFields[0]];
+                    }
+                    // date type min value init
+                    if (tempAxis.datatype === 'date' && i === 0) {
+                        tempAxis.min = tempNum;
+                    }
+                    tempAxis.min = Math.min(tempAxis.min, tempNum);
+                    tempAxis.max = Math.max(tempAxis.max, tempNum + (tempNum * 0.1));
+                    tempAxis.domain[0] = tempAxis.min;
+                    tempAxis.domain[1] = tempAxis.max;
+                }
+            }
+        }
+        // TODO: scale data create
     }
+
+    // _scaleSetting() {
+    //     this.numeric_min = this.domain[0];
+    //     this.numeric_max = this.domain[1];
+    //     this._scale = d3.scale.linear()
+    //                             .domain(this.domain)
+    //                             .range(this._range);
+    // }
+
+    // _scaleToAxeSetting() {
+    //     if (!this.axe) {
+    //         this.axe = new Axe();
+    //     }
+    //     this.axe.scale = this._scale;
+    //     this.axe.scaleToAxe = d3.svg.axis()
+    //                             .scale(this._scale)
+    //                             .orient(this.orient);
+    //     if (this.tickInfo.ticks) {
+    //         this.axe.scaleToAxe.ticks(this.tickInfo.ticks);
+    //     }
+    //     if ( this.tickInfo.tickFormat ) {
+    //         this.axe.scaleToAxe.tickFormat(this.tickInfo.tickFormat);
+    //     }
+    // }
 
     _dataChangeEvent = (type: string, targetValue: any) => {
         this.updateDisplay();
