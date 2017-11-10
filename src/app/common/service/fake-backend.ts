@@ -45,7 +45,6 @@ export function FakeBackendFactory(backend: MockBackend, options: BaseRequestOpt
 }
 
 export let FakeBackendProvider = {
-    // use fake backend in place of Http service for backend-less development
     provide: Http,
     useFactory: FakeBackendFactory,
     deps: [MockBackend, BaseRequestOptions]
